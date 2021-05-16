@@ -5,11 +5,8 @@ from .my_functions import load_static
 import os
 import pathlib
 
-app_name = pathlib.Path(__file__).stem
-
-print(os.path.join(app_name, "home.html"))
-
 # print(os.path.basename(__file__))
+app_name = pathlib.Path(__file__).stem
 
 def app():
     st.title('Blobby')
