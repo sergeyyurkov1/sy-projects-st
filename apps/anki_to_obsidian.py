@@ -1,13 +1,14 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 
+# Application requirements
 import io
 from io import StringIO
 import re
 import base64
 import time
 
+# Defines the application
 def app():
     st.title('Anki to Obsidian exporter')
     st.markdown("***")
@@ -15,19 +16,20 @@ def app():
     # st.sidebar.markdown("***")
     # add_selectbox = st.sidebar.selectbox("How would you like to be contacted?", ("Email", "Home phone", "Mobile phone"))
 
-    col1, col2, col3 = st.beta_columns([4,1,2])
+    col1, col2, col3 = st.columns([4,1,2])
 
     with col2 :
         st.write("")
     
     with col3 :
-        st.markdown("""
-        #### How to import data
-        """)
+        # st.markdown("""
+        # #### How to import data
+        # """)
+        st.write("")
 
     with col1 :
-        options = st.beta_expander("Options", False)
-        option = options.radio("Select Obsidian format", ["Basic"])
+        options = st.expander("Options", False)
+        option = options.radio("Select your Anki card format", ["Basic"])
 
         st.markdown("***")
 
@@ -45,7 +47,7 @@ def app():
                 st.write(string_data.split('\n')[:5])
             
             if re.search(r"^(.*)\t(.*)\t(.*)", string_data) == None :
-                st.error("Please check if you exported the correct file")
+                st.error("Please check if you exported the file per instructions")
                 st.stop()
 
             out = re.sub(r"^(.*)\t(.*)\t(.*)", fr"START\n{option}\n\1\nBack: \2\nTags: \3\nEND\n\n", string_data, flags=re.MULTILINE)

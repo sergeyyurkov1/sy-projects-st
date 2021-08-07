@@ -5,7 +5,7 @@ from multiapp import MultiApp
 st.set_page_config(page_title="Apps", page_icon="icon.png", layout="wide")
 
 # Imports apps
-from apps import home, anki_to_obsidian, bubble_pop
+from apps import home, anki_to_obsidian, bubble_pop, free_code_camp, vaccination_goals
 
 app = MultiApp()
 
@@ -29,10 +29,12 @@ st.markdown(
     </script>
     """, unsafe_allow_html=True)
 
-# Apps init
+# Register your app here
 app.add_app("Home", home.app)
 app.add_app("Anki to Obsidian exporter", anki_to_obsidian.app)
 app.add_app("Bubble Pop!", bubble_pop.app)
+app.add_app("freeCodeCamp Projects", free_code_camp.app)
+app.add_app("Vaccination Goal Date Predictor", vaccination_goals.app)
 
 # Runs the MultiApp
 app.run()
