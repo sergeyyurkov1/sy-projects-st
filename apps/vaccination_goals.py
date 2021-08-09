@@ -45,10 +45,13 @@ def app():
         population = {}
         try:
             # population["population"] = df1.loc[ df1[df1.columns[2]] == country, year ].values[0] * 1000
-            population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country), year ].values[1] * 1000
+            population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country), year ].values[-1] * 1000
         except:
-            st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
-            st.stop()
+            try:
+                population["population"] = df1.loc[ df1[df1.columns[2]] == country, year ].values[0] * 1000
+            except:
+                st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
+                st.stop()
         
         return population
 
