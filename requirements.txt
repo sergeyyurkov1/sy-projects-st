@@ -3,3 +3,4 @@ humanize
 pandas
 numpy
 openpyxl
+plotly
