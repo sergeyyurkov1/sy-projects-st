@@ -4,6 +4,7 @@ import streamlit.components.v1 as components
 # Defines the application
 def app():
     st.title("freeCodeCamp Projects")
+    st.subheader("Some of my projects for Scientific Computing with Python and Data Analysis with Python certification programs")
     st.markdown("***")
 
     st.markdown("## Sea Level Predictor")
@@ -34,4 +35,3 @@ def app():
     st.markdown("## Probability Calculator")
     components.iframe("https://replit.com/@sergeyyurkov1/boilerplate-probability-calculator?lite=true", width=800, height=600)
     # embed=true
-    st.markdown("***")

@@ -15,7 +15,7 @@ def app():
     st.title('Bubble Pop!')
     st.markdown("""
     ***
-    Simple and relaxing game made with `P5.js` and `Matter.js` libraries. Pop some bubbles but watch out for the pesky donuts! And remember: "It's not a bug, it's a feature!"
+    Simple and relaxing game made with `P5.js` and `Matter.js` libraries. Pop some bubbles but watch out for pesky donuts! And remember: "It's not a bug, it's a feature!"
     
     *Runs best on Chrome/Chromium based browsers*
     """)

@@ -11,12 +11,13 @@ import time
 # Defines the application
 def app():
     st.title('Anki to Obsidian exporter')
+    st.subheader("Export your flashcards to Obsidian note taking app.")
     st.markdown("***")
 
     # st.sidebar.markdown("***")
     # add_selectbox = st.sidebar.selectbox("How would you like to be contacted?", ("Email", "Home phone", "Mobile phone"))
 
-    col1, col2, col3 = st.columns([4,1,2])
+    col1, col2, col3 = st.columns([3,1,2])
 
     with col2 :
         st.write("")
@@ -33,7 +34,7 @@ def app():
 
         st.markdown("***")
 
-        uploaded_file = st.file_uploader("Choose a file", type="txt", accept_multiple_files=False, key=None, help=None)
+        uploaded_file = st.file_uploader("Choose your export file", type="txt", accept_multiple_files=False, key=None, help=None)
 
         if uploaded_file is not None:
 

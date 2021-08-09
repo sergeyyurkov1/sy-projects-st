@@ -28,7 +28,7 @@ class MultiApp :
         
         st.sidebar.markdown(
             """
-            This project is built and maintained by **Sergey Yurkov**. You can learn more about me at [linkedin.com](#) and [dev.to](#).
+            This site is built and maintained by **Sergey Yurkov**. You can learn more about me at [linkedin.com](https://www.linkedin.com/in/sergeyyurkov1).
             """
         )
         # st.sidebar.info(
