@@ -11,6 +11,7 @@ def app():
     from datetime import timedelta
     import plotly.express as px
     import plotly.graph_objects as go
+    import pycountry
     
     demographic_data = "https://population.un.org/wpp/Download/Files/1_Indicators%20(Standard)/EXCEL_FILES/1_Population/WPP2019_POP_F01_1_TOTAL_POPULATION_BOTH_SEXES.xlsx"
     vaccination_data = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/vaccinations/vaccinations.csv"
@@ -42,16 +43,19 @@ def app():
         # Removes the first row containing column names as it is no longer needed
         df1 = df1.iloc[1:]
 
+        code_obj = pycountry.countries.search_fuzzy(country)[0]
+        code = int(code_obj.numeric)
+
         population = {}
         try:
-            # population["population"] = df1.loc[ df1[df1.columns[2]] == country, year ].values[0] * 1000
-            population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country), year ].values[-1] * 1000
+            population["population"] = df1.loc[ df1[df1.columns[4]] == code, year ].values[0] * 1000
+            # population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country), year ].values[-1] * 1000
         except:
-            try:
-                population["population"] = df1.loc[ df1[df1.columns[2]] == country, year ].values[0] * 1000
-            except:
-                st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
-                st.stop()
+            # try:
+            #     population["population"] = df1.loc[ df1[df1.columns[2]] == country, year ].values[0] * 1000
+            # except:
+            st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
+            st.stop()
         
         return population
 
