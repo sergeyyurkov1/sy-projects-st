@@ -92,19 +92,59 @@ def app():
 
         vacc_start_date = country.iloc[0,0]
 
-        fig = px.bar(country, x="date", y="daily_vaccinations_cumsum", labels={
-                        "date": "Days",
-                        "daily_vaccinations_cumsum": "Vaccinations done (cumulative sum)"},
-                    title=f"{l}"
+        # ---------------------------------------------------------------------------------------------------------
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(x=country["date"], y=country["daily_vaccinations_cumsum"],
+            name="shots",
+            yaxis="y1",)
+        )
+
+        fig.add_trace(go.Line(x=country["date"], y=country["daily_vaccinations"], yaxis="y2", name="shots"))
+
+        fig.update_layout(
+            xaxis=dict(
+                title="<b>Days</b>",
+                showgrid=False,
+            ),
+            yaxis=dict(
+                title="<b>Vaccinations done,</b> shots (cumulative sum)",
+                # titlefont=dict(
+                #     color="#1f77b4"
+                # ),
+                # tickfont=dict(
+                #     color="#1f77b4"
+                # ),
+                showgrid=False,
+                anchor = 'x',
+                rangemode="tozero",
+            ),
+            yaxis2=dict(
+                title="<b>Daily vaccinations,</b> shots",
+                # titlefont=dict(
+                #     color="#1f77b4"
+                # ),
+                # tickfont=dict(
+                #     color="#1f77b4"
+                # ),
+                anchor="x",
+                overlaying="y",
+                side="right",
+                showgrid=False,
+                rangemode="nonnegative",
+                scaleanchor = "y1",
+                scaleratio=10,
+            ),
         )
 
         fig.update_traces(marker_color="#9481d2", hovertemplate="%{y:,}")
 
-        text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>in <b>{days_to_goal} days ({goal_date:%B %Y})</b>"
-        font_color = "Red"
-        color="Red"
+        text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>in <b>{days_to_goal} days ({goal_date:%B %Y})</b><br>~ {humanize.intword(goal_vaccinations)} doses required"
+        font_color = "Orange"
+        color="Orange"
         if days_to_goal <= 0:
-            text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>was achieved"
+            text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>is <b>achieved</b>"
             font_color = "Green"
             color="Green"
 
@@ -116,13 +156,28 @@ def app():
             font_color=font_color,
             # arrowcolor="Red",
             # arrowhead=1,
-            hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
+            # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
             showarrow=False,
             # yanchor="top",
             xanchor="left",
             xshift=10,
-            bgcolor="rgba(169,169,169,0.35)"
+            bgcolor="rgba(255,255,255,0.85)"
         )
+
+        fig.add_annotation(
+            text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
+            align="left",
+            x=country_info[l]["goal_date"],
+            y=country_info[l]["goal_vaccinations"],
+            # hovertext=f"",
+            showarrow=False,
+            xanchor="right",
+            xshift=-10,
+            # bgcolor="rgba(169,169,169,0.35)"
+        )
+
+        # Vertical line
+        # -------------
         fig.add_shape(type="line",
             x0=country_info[l]["goal_date"], y0=0, x1=country_info[l]["goal_date"], y1=country_info[l]["goal_vaccinations"],
             line=dict(
@@ -140,39 +195,25 @@ def app():
             )
         )
 
-        fig.add_annotation(text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
-            align="left",
-            xref="paper", yref="paper",
-            x=0.1, y=0.9,
-            showarrow=False,
-            bgcolor="rgba(169,169,169,0.35)"
-        )
-
-        # Diagonal line
-        # -------------
-        # fig.add_shape(type="line",
-        #     x0=country_info[l]["date"], y0=country_info[l]["daily_vaccinations_cumsum"], x1=country_info[l]["goal_date"], y1=country_info[l]["goal_vaccinations"],
-        #     line=dict(
-        #         color="Red",
-        #         width=1,
-        #         dash="dot"
-        #     )
+        # fig.add_annotation(text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
+        #     align="left",
+        #     xref="paper", yref="paper",
+        #     x=0.1, y=0.9,
+        #     showarrow=False,
+        #     bgcolor="rgba(169,169,169,0.35)"
         # )
 
-        # Horizontal line
-        # ---------------
-        # fig.add_shape(type="line",
-        #     x0=country_info[l]["date"], y0=0, x1=country_info[l]["goal_date"], y1=0,
-        #     line=dict(
-        #         color="Red",
-        #         width=1,
-        #         dash="dot",
-        #     )
-        # )
+        
 
         fig.update_layout({
             "plot_bgcolor": "#f5f7f3",
-            "paper_bgcolor": "#f5f7f3"}, hovermode="x", hoverlabel=dict(font_color="white")
+            "paper_bgcolor": "#f5f7f3"}, hovermode="x", hoverlabel=dict(font_color="white"),
+        )
+
+        fig.update_layout(
+            title_text=f"{l}",
+            width=800,
+            showlegend=False,
         )
 
         return fig
@@ -203,7 +244,7 @@ def app():
 
         return df, country_info
 
-    with st.spinner(text="Please wait... Tip: you can zoom in on charts to better see the data and hover over the points to see some tooltips.") :
+    with st.spinner(text="Tip: you can zoom in on charts to better see the data.") :
         for l in locations:
             df, country_info = process_vaccination_data(df_vaccination_data_raw, l)
 
