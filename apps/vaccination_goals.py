@@ -165,14 +165,15 @@ def app():
         )
 
         fig.add_annotation(
-            text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
+            text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people<br>received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
             align="left",
-            x=country_info[l]["goal_date"],
-            y=country_info[l]["goal_vaccinations"],
+            x=0.05,
+            y=0.95,
+            xref="paper", yref="paper",
             # hovertext=f"",
             showarrow=False,
-            xanchor="right",
-            xshift=-10,
+            # xanchor="right",
+            # xshift=-10,
             # bgcolor="rgba(169,169,169,0.35)"
         )
 
