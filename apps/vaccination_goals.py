@@ -1,3 +1,4 @@
+from os import X_OK
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -52,14 +53,18 @@ def app():
         df1 = read_population_data()
         population = {}
         try:
-            code_obj = pycountry.countries.search_fuzzy(country)[0]
-            code = int(code_obj.numeric)
-            population["population"] = df1.loc[ df1[df1.columns[4]] == code, year ].values[0] * 1000
-            # population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country), year ].values[0] * 1000
+            if country != "World":
+                code_obj = pycountry.countries.search_fuzzy(country)[0]
+                code = int(code_obj.numeric)
+                population["population"] = df1.loc[ df1[df1.columns[4]] == code, year ].values[0] * 1000
+            else:
+                # population["population"] = df1.loc[ df1[df1.columns[2]] == country.toupper(), year ].values[0] * 1000
+                population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country.toupper()), year ].values[0] * 1000
         # except (LookupError, OutOfBoundsDatetime) as e:
-        except:
-            st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
-            st.stop()
+        except Exception as e:
+            print(e)
+            # st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
+            # st.stop()
         
         return population
     
@@ -72,36 +77,53 @@ def app():
     sorted_unique_locations = sorted(df_vaccination_data_raw.location.unique())
 
     locations = st.multiselect("Select location(s)", sorted_unique_locations)
+    #default="World"
 
     ##############################
     # Functions
     ##############################
     @st.cache(show_spinner=False)
-    def make_plot(df, country_info, l, year):
-        
-        country = df
-
+    def make_plot(df, location_info, location, year):
         # Annotations to display
-        days_to_goal = int(country_info[l]["days_to_goal"])
-        goal_vaccinations = int(country_info[l]["goal_vaccinations"])
-        population = int(country_info[l]["population"])
-        date = country_info[l]["date"]
-        daily_vaccinations = int(country_info[l]["daily_vaccinations"])
-        vaccinated_people = int(country_info[l]["vaccinated_people"])
-        goal_date = country_info[l]["goal_date"]
+        days_to_goal = int(location_info[location]["days_to_goal"])
+        goal_vaccinations = int(location_info[location]["goal_vaccinations"])
+        population = int(location_info[location]["population"])
+        date = location_info[location]["date"]
+        daily_vaccinations = int(location_info[location]["daily_vaccinations"])
+        vaccinated_people = int(location_info[location]["vaccinated_people"])
+        goal_date = location_info[location]["goal_date"]
 
-        vacc_start_date = country.iloc[0,0]
+        vacc_start_date = df.iloc[0,0]
+
+        df["percent_fully_vaccinated"].fillna(0, inplace=True)
+        df = df.astype({"percent_fully_vaccinated": int})
+
+        try:
+            date_vacc_50_perc = df.loc[df["percent_fully_vaccinated"] == 50, "date"][-1]
+            daily_vaccinations_cumsum_50_perc = df.loc[df["percent_fully_vaccinated"] == 50, "daily_vaccinations_cumsum"][-1]
+        except IndexError:
+            date_vacc_50_perc = location_info[location]["goal_date_50_perc"]
+            daily_vaccinations_cumsum_50_perc = location_info[location]["goal_vaccinations_50_perc"]
+
+        try:
+            date_vacc_30_perc = df.loc[df["percent_fully_vaccinated"] == 30, "date"][-1]
+            daily_vaccinations_cumsum_30_perc = df.loc[df["percent_fully_vaccinated"] == 30, "daily_vaccinations_cumsum"][-1]
+        except IndexError:
+            date_vacc_30_perc = location_info[location]["goal_date_30_perc"]
+            daily_vaccinations_cumsum_30_perc = location_info[location]["goal_vaccinations_30_perc"]
+
+
 
         # ---------------------------------------------------------------------------------------------------------
 
         fig = go.Figure()
 
-        fig.add_trace(go.Bar(x=country["date"], y=country["daily_vaccinations_cumsum"],
+        fig.add_trace(go.Bar(x=df["date"], y=df["daily_vaccinations_cumsum"],
             name="shots",
             yaxis="y1",)
         )
 
-        fig.add_trace(go.Line(x=country["date"], y=country["daily_vaccinations"], yaxis="y2", name="shots"))
+        fig.add_trace(go.Line(x=df["date"], y=df["daily_vaccinations"], yaxis="y2", name="shots"))
 
         fig.update_layout(
             xaxis=dict(
@@ -138,9 +160,19 @@ def app():
             ),
         )
 
-        fig.update_traces(marker_color="#9481d2", hovertemplate="%{y:,}")
+        fig.update_traces(marker_color="rgba(148, 129, 210, 0.5)",
+            marker_line_width = 0,
+            selector=dict(type="bar"),
+            hovertemplate="%{y:,}",
+        )
 
-        text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>in <b>{days_to_goal} days ({goal_date:%B %Y})</b><br>~ {humanize.intword(goal_vaccinations)} doses required"
+        fig.update_traces(marker_color="Red",
+            # marker_line_width = 0,
+            selector=dict(type="line"),
+            hovertemplate="%{y:,}",
+        )
+
+        text = f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{days_to_goal} days ({goal_date:%B %Y})</b><br>~ {humanize.intword(goal_vaccinations)} doses required"
         font_color = "Orange"
         color="Orange"
         if days_to_goal <= 0:
@@ -151,8 +183,8 @@ def app():
         fig.add_annotation(
             text=text,
             align="left",
-            x=country_info[l]["goal_date"],
-            y=country_info[l]["goal_vaccinations"],
+            x=location_info[location]["goal_date"],
+            y=location_info[location]["goal_vaccinations"],
             font_color=font_color,
             # arrowcolor="Red",
             # arrowhead=1,
@@ -177,10 +209,13 @@ def app():
             # bgcolor="rgba(169,169,169,0.35)"
         )
 
-        # Vertical line
+        # def add_goal_marker(perc: int):
+
+
+        # Vertical line 70%
         # -------------
         fig.add_shape(type="line",
-            x0=country_info[l]["goal_date"], y0=0, x1=country_info[l]["goal_date"], y1=country_info[l]["goal_vaccinations"],
+            x0=location_info[location]["goal_date"], y0=0, x1=location_info[location]["goal_date"], y1=location_info[location]["goal_vaccinations"],
             line=dict(
                 color="White",
                 width=2,
@@ -188,7 +223,93 @@ def app():
             )
         )
         fig.add_shape(type="line",
-            x0=country_info[l]["goal_date"], y0=0, x1=country_info[l]["goal_date"], y1=country_info[l]["goal_vaccinations"],
+            x0=location_info[location]["goal_date"], y0=0, x1=location_info[location]["goal_date"], y1=location_info[location]["goal_vaccinations"],
+            line=dict(
+                color=color,
+                width=2,
+                dash="dot"
+            )
+        )
+        # -------------
+
+        # Vertical line 50%
+        # -------------
+        text_50_perc = "<b>50%</b>"
+        font_color_50_perc = "Orange"
+        color_50_perc="Orange"
+        if int(location_info[location]["days_to_goal_50_perc"]) <= 0:
+            text_50_perc = f"<b>50% reached</b>"
+            font_color_50_perc = "Green"
+            color_50_perc="Green"
+        fig.add_annotation(
+            text=text_50_perc,
+            align="left",
+            x=date_vacc_50_perc,
+            y=daily_vaccinations_cumsum_50_perc,
+            font_color=font_color_50_perc,
+            # arrowcolor="Red",
+            # arrowhead=1,
+            # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
+            showarrow=False,
+            yanchor="bottom",
+            # xanchor="left",
+            # xshift=10,
+            bgcolor="rgba(255,255,255,0.85)"
+        )
+        fig.add_shape(type="line",
+            x0=date_vacc_50_perc, y0=0, x1=date_vacc_50_perc, y1=daily_vaccinations_cumsum_50_perc,
+            line=dict(
+                color="White",
+                width=2,
+                # dash="dot"
+            )
+        )
+        fig.add_shape(type="line",
+            x0=date_vacc_50_perc, y0=0, x1=date_vacc_50_perc, y1=daily_vaccinations_cumsum_50_perc,
+            line=dict(
+                color=color,
+                width=2,
+                dash="dot"
+            )
+        )
+        # -------------
+
+        # Vertical line 30%
+        # -------------
+        text_30_perc = "<b>30%</b>"
+        font_color_30_perc = "Orange"
+        color_30_perc="Orange"
+        if int(location_info[location]["days_to_goal_30_perc"]) <= 0:
+            text_30_perc = f"<b>30% reached</b>"
+            font_color_30_perc = "Green"
+            color_30_perc="Green"
+        fig.add_annotation(
+            text=text_30_perc,
+            align="left",
+            x=date_vacc_30_perc,
+            y=daily_vaccinations_cumsum_30_perc,
+            font_color=font_color_30_perc,
+            # arrowcolor="Red",
+            # arrowhead=1,
+            # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
+            showarrow=False,
+            yanchor="bottom",
+            # xanchor="left",
+            # xshift=10,
+            bgcolor="rgba(255,255,255,0.85)"
+        )
+        
+        fig.add_shape(type="line",
+            x0=date_vacc_30_perc, y0=0, x1=date_vacc_30_perc, y1=daily_vaccinations_cumsum_30_perc,
+            line=dict(
+                color="White",
+                width=2,
+                # dash="dot"
+            )
+        )
+
+        fig.add_shape(type="line",
+            x0=date_vacc_30_perc, y0=0, x1=date_vacc_30_perc, y1=daily_vaccinations_cumsum_30_perc,
             line=dict(
                 color=color,
                 width=2,
@@ -196,58 +317,63 @@ def app():
             )
         )
 
-        # fig.add_annotation(text=f"<b>Population:</b> {population:,} ({year})<br><b>Vaccination started:</b> {vacc_start_date:%B %d, %Y}<br><b>{date:%B %d, %Y}:</b> {vaccinated_people:,} ({int(vaccinated_people*100/population)}%) people received at least 2 doses of vaccine,<br>{daily_vaccinations:,} shots were administered",
-        #     align="left",
-        #     xref="paper", yref="paper",
-        #     x=0.1, y=0.9,
-        #     showarrow=False,
-        #     bgcolor="rgba(169,169,169,0.35)"
-        # )
-
-        
-
         fig.update_layout({
             "plot_bgcolor": "#f5f7f3",
             "paper_bgcolor": "#f5f7f3"}, hovermode="x", hoverlabel=dict(font_color="white"),
         )
 
         fig.update_layout(
-            title_text=f"{l}",
+            title_text=f"{location}",
             width=800,
             showlegend=False,
         )
 
         return fig
 
+    # ---------------------------------------------------------------------------------------------------------
     @st.cache(show_spinner=False, suppress_st_warning=True)
-    def process_vaccination_data(df_vaccination_data_raw, l):
+    def process_vaccination_data(df_vaccination_data_raw, location):
 
-        # df = df_vaccination_data_raw[df_vaccination_data_raw["location"].isin(l)]
-        df = df_vaccination_data_raw[df_vaccination_data_raw["location"] == l]
+        df = df_vaccination_data_raw[df_vaccination_data_raw["location"] == location]
         
-        # df["daily_vaccinations_cumsum"] = df["daily_vaccinations"].groupby(df["location"]).transform("cumsum")
         df["daily_vaccinations_cumsum"] = df["daily_vaccinations"].transform("cumsum")
-
-        # df_grouped = df.groupby(["location"])
-
-        # country_info = df_grouped.agg(lambda x: x.iloc[-1]).to_dict("index")
 
         df.set_index("location", inplace=True, drop=True)
 
-        country_info_series = df.iloc[-1]
-        country_info = {country_info_series.name: dict(country_info_series)}
+        location_info_series = df.iloc[-1]
+        location_info = {location_info_series.name: dict(location_info_series)}
 
-        country_info[l].update(**get_population(l, year))
-        country_info[l]["vaccinated_people"] = country_info[l]["daily_vaccinations_cumsum"] / 2
-        country_info[l]["goal_vaccinations"] = (country_info[l]["population"]*70/100) * 2
-        country_info[l]["days_to_goal"] = int(((country_info[l]["population"]*70/100) - country_info[l]["vaccinated_people"]) / country_info[l]["daily_vaccinations"] * 2)
-        country_info[l]["goal_date"] = country_info[l]["date"] + timedelta(days=country_info[l]["days_to_goal"])
+        location_info[location].update(**get_population(location, year))
 
-        return df, country_info
+        location_info[location]["vaccinated_people"] = location_info[location]["daily_vaccinations_cumsum"] / 2
+
+        df["percent_fully_vaccinated"] = df["daily_vaccinations_cumsum"].apply(lambda x: (x*100)/(location_info[location]["population"]*2))
+
+        # Predictions
+        # -----------
+        # 70%
+        location_info[location]["goal_vaccinations"] = (location_info[location]["population"]*70/100) * 2
+        location_info[location]["days_to_goal"] = int(((location_info[location]["population"]*70/100) - location_info[location]["vaccinated_people"]) / location_info[location]["daily_vaccinations"] * 2)
+        location_info[location]["goal_date"] = location_info[location]["date"] + timedelta(days=location_info[location]["days_to_goal"])
+
+        # 50%
+        location_info[location]["goal_vaccinations_50_perc"] = (location_info[location]["population"]*50/100) * 2
+        location_info[location]["days_to_goal_50_perc"] = int(((location_info[location]["population"]*50/100) - location_info[location]["vaccinated_people"]) / location_info[location]["daily_vaccinations"] * 2)
+        location_info[location]["goal_date_50_perc"] = location_info[location]["date"] + timedelta(days=location_info[location]["days_to_goal_50_perc"])
+
+        # 30%
+        location_info[location]["goal_vaccinations_30_perc"] = (location_info[location]["population"]*30/100) * 2
+        
+        location_info[location]["days_to_goal_30_perc"] = int(((location_info[location]["population"]*30/100) - location_info[location]["vaccinated_people"]) / location_info[location]["daily_vaccinations"] * 2)
+
+        location_info[location]["goal_date_30_perc"] = location_info[location]["date"] + timedelta(days=location_info[location]["days_to_goal_30_perc"])
+
+        return df, location_info
 
     with st.spinner(text="Tip: you can zoom in on charts to better see the data.") :
-        for l in locations:
-            df, country_info = process_vaccination_data(df_vaccination_data_raw, l)
-
-            fig = make_plot(df, country_info, l, year)
+        for location in locations:
+            breakpoint()
+            df, location_info = process_vaccination_data(df_vaccination_data_raw, location)
+            
+            fig = make_plot(df, location_info, location, year)
             st.plotly_chart(fig, use_container_width=True)

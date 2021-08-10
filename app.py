@@ -1,3 +1,7 @@
+import ptvsd
+ptvsd.enable_attach(address=('localhost', 5678))
+# ptvsd.wait_for_attach() # Only include this line if you always want to attach the debugger
+
 import streamlit as st
 from multiapp import MultiApp
 
