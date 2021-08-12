@@ -1,8 +1,11 @@
-from os import X_OK
 import streamlit as st
 import streamlit.components.v1 as components
 
-import uuid
+import copy
+
+import base64
+from io import StringIO
+
 # Defines the application
 def app():
     import humanize
@@ -13,9 +16,10 @@ def app():
     from datetime import timedelta
     import plotly.express as px
     import plotly.graph_objects as go
+
     import pycountry
     
-    st.title("Vaccination Goal Visualizer")
+    st.title("Vaccination Goal Visualizer, v.3")
     st.markdown("""
         This app approximates a date when our global vaccination goals will be achieved; data is updated every day and automatically reflected in charts.
         * **Data sources:** [Our World In Data](https://ourworldindata.org/covid-vaccinations), [United Nations](https://population.un.org/wpp)
@@ -63,9 +67,9 @@ def app():
                 population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country.toupper()), year ].values[0] * 1000
         # except (LookupError, OutOfBoundsDatetime) as e:
         except Exception as e:
-            print(e)
-            # st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
-            # st.stop()
+            # print(e)
+            st.error(f"Something went wrong when looking up data for {country}. Please select a different location. I am working on a solution.")
+            st.stop()
         
         return population
     
@@ -84,7 +88,10 @@ def app():
     # Functions
     ##############################
     @st.cache(show_spinner=False)
-    def make_plot(df, location_info, location, year):
+    def make_plot(df1, location_info1, location, year):
+        df = copy.deepcopy(df1)
+        location_info = copy.deepcopy(location_info1)
+
         df = df.astype({"percent_fully_vaccinated": int})
 
         def set_predict_or_fact(perc: int) -> None:
@@ -106,12 +113,21 @@ def app():
 
         fig = go.Figure()
 
-        fig.add_trace(go.Bar(x=df["date"], y=df["daily_vaccinations_cumsum"],
-            name="shots",
+        fig.add_trace(go.Bar(x=df["date"],
+            y=df["daily_vaccinations_cumsum"],
+            name="total",
+            hoverinfo="y",
+            hovertemplate="%{y:,}",
             yaxis="y1",)
         )
 
-        fig.add_trace(go.Line(x=df["date"], y=df["daily_vaccinations"], yaxis="y2", name="shots"))
+        fig.add_trace(go.Line(x=df["date"],
+            y=df["daily_vaccinations"],
+            name="daily",
+            hoverinfo="y",
+            hovertemplate="%{y:,}",
+            yaxis="y2",)
+        )
 
         fig.update_layout(
             xaxis=dict(
@@ -119,7 +135,7 @@ def app():
                 showgrid=False,
             ),
             yaxis=dict(
-                title="<b>Vaccinations done,</b> shots (cumulative sum)",
+                title="<b>Total vaccinations,</b> shots (cumulative sum)",
                 # titlefont=dict(
                 #     color="#1f77b4"
                 # ),
@@ -127,7 +143,7 @@ def app():
                 #     color="#1f77b4"
                 # ),
                 showgrid=False,
-                anchor = 'x',
+                anchor="x",
                 rangemode="tozero",
             ),
             yaxis2=dict(
@@ -139,57 +155,55 @@ def app():
                 #     color="#1f77b4"
                 # ),
                 anchor="x",
-                overlaying="y",
+                overlaying="y1",
                 side="right",
                 showgrid=False,
                 rangemode="nonnegative",
-                scaleanchor = "y1",
-                scaleratio=10,
+                scaleanchor="y1",
+                scaleratio=50,
             ),
         )
 
-        fig.update_traces(marker_color="rgba(148, 129, 210, 0.5)",
+        fig.update_traces(marker_color="rgba(148, 129, 210, 0.7)",
             marker_line_width = 0,
             selector=dict(type="bar"),
-            hovertemplate="%{y:,}",
         )
 
         fig.update_traces(marker_color="Red",
-            # marker_line_width = 0,
+            marker_line_width = 0,
             selector=dict(type="line"),
-            hovertemplate="%{y:,}",
         )
 
         # ---------------------------------------------------------------------------------------------------------------------------
 
-        _days_to_goal = location_info[location]["days_to_goal_70_perc"]
-        _goal_date = location_info[location]["goal_date_70_perc"]
-        _goal_vaccinations = location_info[location]["goal_vaccinations_70_perc"]
+        # _days_to_goal = location_info[location]["days_to_goal_70_perc"]
+        # _goal_date = location_info[location]["goal_date_70_perc"]
+        # _goal_vaccinations = location_info[location]["goal_vaccinations_70_perc"]
 
-        if int(location_info[location]["days_to_goal_70_perc"]) <= 0:
-            text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>is <b>achieved</b>"
-            font_color = "Green"
-            # color="Green"
-        else:
-            text = f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses required"
-            font_color = "Orange"
-            # color="Orange"
+        # if int(location_info[location]["days_to_goal_70_perc"]) <= 0:
+        #     text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>is <b>achieved</b>"
+        #     font_color = "Green"
+        #     # color="Green"
+        # else:
+        #     text = f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses required"
+        #     font_color = "Orange"
+        #     # color="Orange"
 
-        fig.add_annotation(
-            text=text,
-            align="center",
-            x=location_info[location]["goal_date_70_perc"],
-            y=location_info[location]["goal_vaccinations_70_perc"],
-            font_color=font_color,
-            # arrowcolor="Red",
-            # arrowhead=1,
-            # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
-            showarrow=False,
-            yanchor="bottom",
-            xanchor="left",
-            xshift=10,
-            bgcolor="rgba(255,255,255,0.85)"
-        )
+        # fig.add_annotation(
+        #     text=text,
+        #     align="center",
+        #     x=location_info[location]["goal_date_70_perc"],
+        #     y=location_info[location]["goal_vaccinations_70_perc"],
+        #     font_color=font_color,
+        #     # arrowcolor="Red",
+        #     # arrowhead=1,
+        #     # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
+        #     showarrow=False,
+        #     yanchor="bottom",
+        #     xanchor="left",
+        #     xshift=10,
+        #     bgcolor="rgba(255,255,255,0.85)"
+        # )
 
         # ---------------------------------------------------------------------------------------------------------------------------
 
@@ -201,7 +215,7 @@ def app():
 
         fig.add_annotation(
             # text="Test",
-            text=f"<b>Population:</b> {_population:,} ({year})<br><b>Vaccination started:</b> {_vacc_start_date:%B %d, %Y}<br><b>{_date:%B %d, %Y}:</b> {_vaccinated_people:,} ({int(_vaccinated_people*100/int(_population))}%) people<br>received at least 2 doses of vaccine,<br>{int(_daily_vaccinations):,} shots were administered",
+            text=f"<b>Population:</b> {humanize.intword(_population)} ({year})<br><b>Vaccination started:</b> {_vacc_start_date:%B %d, %Y}<br><b>{_date:%B %d, %Y}:</b> {_vaccinated_people:,} ({int(_vaccinated_people*100/int(_population))}%) people<br>received at least 2 doses of vaccine,<br>{int(_daily_vaccinations):,} shots were administered",
             align="left",
             x=0.05,
             y=0.95,
@@ -217,11 +231,11 @@ def app():
 
         def add_goal_marker(perc: int, text: str = None) -> None:
             if int(location_info[location][f"days_to_goal_{perc}_perc"]) <= 0:
-                text = f"<b>{perc}% reached</b>"
+                text = f"<b>{perc}%</b>"
                 font_color = "Green"
                 color="Green"
             else:
-                text = f"<b>{perc}%</b>"
+                text = text or f"<b>{perc}%</b>"
                 font_color = "Orange"
                 color="Orange"
             fig.add_annotation(
@@ -235,8 +249,8 @@ def app():
                 # hovertext=f"",
                 showarrow=False,
                 yanchor="bottom",
-                # xanchor="left",
-                # xshift=10,
+                xanchor="right",
+                xshift=5,
                 bgcolor="rgba(255,255,255,0.85)"
             )
             fig.add_shape(type="line",
@@ -256,11 +270,16 @@ def app():
                 )
             )
             return None
+        
+        f = "<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{_days_to_goal} days ({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
+        _goal_date=location_info[location]["goal_date_70_perc"],
+        _goal_vaccinations=humanize.intword(int(location_info[location]["goal_vaccinations_70_perc"])))
 
         add_goal_marker(10)
         add_goal_marker(50)
         add_goal_marker(30)
-        add_goal_marker(70)
+        # add_goal_marker(70, f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses")
+        add_goal_marker(70, f)
         add_goal_marker(80)
 
         fig.update_layout({
@@ -279,7 +298,7 @@ def app():
         return fig
 
     # ---------------------------------------------------------------------------------------------------------------------------
-    @st.cache(show_spinner=False, suppress_st_warning=True)
+    # @st.cache(show_spinner=False, suppress_st_warning=True)
     # allow_output_mutation=True
     def process_vaccination_data(df_vaccination_data_raw, location):
 
@@ -322,7 +341,7 @@ def app():
 
         return df, location_info
 
-    with st.spinner(text="Tip: you can zoom in on charts to better see the data.") :
+    with st.spinner(text="Tip: you can zoom in on charts to see the data better.") :
         for location in locations:
             df, location_info = process_vaccination_data(df_vaccination_data_raw, location)
             
@@ -330,7 +349,22 @@ def app():
             st.plotly_chart(fig, use_container_width=True)
 
             df.reset_index(drop=True, inplace=True)
+
             # if st.button(label="Show Dataset", key=location):
-            with st.beta_expander(label="Show/Hide Dataset", expanded=False):
-                st.dataframe(df.style.highlight_null())
+            with st.expander(label="Show/Hide Dataset", expanded=False):
+                st.markdown("""Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00; font-weight:bold;'>duplicate values</span> are also the result of missing data, last valid observations were used to fill the gap (forward fill)""", unsafe_allow_html=True) #<span style='color:#ff0000; font-weight:bold;'>
+                st.dataframe(df.style.highlight_min(subset="daily_vaccinations"))
+
+                output = StringIO()
+                
+                df.to_csv(output)
+                
+                out = output.getvalue()
+                
+                b64 = base64.b64encode(out.encode()).decode()  # strings <-> bytes conversions is necessary here
+                href = f'<a href="data:file/csv;base64,{b64}" download="Vaccination Info - {location}.csv">Download CSV</a>'
+
+                st.markdown(href, unsafe_allow_html=True)
+
+                output.close()
                 
