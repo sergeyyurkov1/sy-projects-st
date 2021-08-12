@@ -6,6 +6,8 @@ import copy
 import base64
 from io import StringIO
 
+import json
+
 # Defines the application
 def app():
     import humanize
@@ -19,9 +21,9 @@ def app():
 
     import pycountry
     
-    st.title("Vaccination Goal Visualizer, v.3")
+    st.title("Vaccination Goal Visualizer, v4")
     st.markdown("""
-        This app approximates a date when our global vaccination goals will be achieved; data is updated every day and automatically reflected in charts.
+        This app approximates a date when our global vaccination goals will be achieved; data are updated every day and automatically reflected in charts.
         * **Data sources:** [Our World In Data](https://ourworldindata.org/covid-vaccinations), [United Nations](https://population.un.org/wpp)
         * **Disclaimer:** *work in progress; vaccination data in certain regions is reported inconsistently; plot figures are estimated and can not be fully accurate*
     """)
@@ -51,20 +53,36 @@ def app():
         df = df.iloc[1:]
 
         return df
+    
+    location_codes = {
+        "World": 900,
+        "Asia": 935,
+        "Cape Verde": 132,
+        "Europe": 908,
+    }
+
+    problematic_locations = ["Bonaire Sint Eustatius and Saba", "Burkina Faso", "Cook Islands", "Democratic Republic of Congo", "European Union", "Faeroe Islands"]
+    # , "Falkland Islands"
+    # "Bhutan", 
 
     # Selects country population
     # @st.cache(show_spinner=False)
     def get_population(country: str, year: str) -> dict:
         df1 = read_population_data()
         population = {}
+
+        if country in problematic_locations:
+            st.error(f"Sorry, currently cannot make a chart for {country}. Please select a different location.")
+            st.stop()
         try:
-            if country != "World":
+            if country in list(location_codes.keys()):
+                code = location_codes[country]
+            else:
                 code_obj = pycountry.countries.search_fuzzy(country)[0]
                 code = int(code_obj.numeric)
-                population["population"] = df1.loc[ df1[df1.columns[4]] == code, year ].values[0] * 1000
-            else:
                 # population["population"] = df1.loc[ df1[df1.columns[2]] == country.toupper(), year ].values[0] * 1000
-                population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country.toupper()), year ].values[0] * 1000
+                # population["population"] = df1.loc[ df1[df1.columns[2]].str.contains(country.toupper()), year ].values[0] * 1000
+            population["population"] = df1.loc[ df1[df1.columns[4]] == code, year ].values[0] * 1000
         # except (LookupError, OutOfBoundsDatetime) as e:
         except Exception as e:
             # print(e)
@@ -81,7 +99,7 @@ def app():
 
     sorted_unique_locations = sorted(df_vaccination_data_raw.location.unique())
 
-    locations = st.multiselect("Select location(s)", sorted_unique_locations)
+    locations = st.multiselect("Select location(s)", sorted_unique_locations, default="World")
     #default="World"
 
     ##############################
@@ -95,9 +113,19 @@ def app():
         df = df.astype({"percent_fully_vaccinated": int})
 
         def set_predict_or_fact(perc: int) -> None:
-            try:
-                location_info[location][f"date_vacc_{perc}_perc"] = df.loc[df["percent_fully_vaccinated"] == perc, "date"][-1]
-                location_info[location][f"daily_vaccinations_cumsum_{perc}_perc"] = df.loc[df["percent_fully_vaccinated"] == perc, "daily_vaccinations_cumsum"][-1]
+            def closest(lst, K):
+                return lst[min(range(len(lst)), key = lambda i: abs(lst[i]-K))]
+            
+            percent_fully_vaccinated_list = df["percent_fully_vaccinated"].tolist()
+
+            perc_approx = closest(percent_fully_vaccinated_list, perc)
+
+            if perc - perc_approx > 3 or perc_approx - perc < -3 :
+                perc_approx = perc
+            
+            try: #
+                location_info[location][f"date_vacc_{perc}_perc"] = df.loc[df["percent_fully_vaccinated"] == perc_approx, "date"][-1]
+                location_info[location][f"daily_vaccinations_cumsum_{perc}_perc"] = df.loc[df["percent_fully_vaccinated"] == perc_approx, "daily_vaccinations_cumsum"][-1]
             except IndexError:
                 location_info[location][f"date_vacc_{perc}_perc"] = location_info[location][f"goal_date_{perc}_perc"]
                 location_info[location][f"daily_vaccinations_cumsum_{perc}_perc"] = location_info[location][f"goal_vaccinations_{perc}_perc"]
@@ -135,7 +163,7 @@ def app():
                 showgrid=False,
             ),
             yaxis=dict(
-                title="<b>Total vaccinations,</b> shots (cumulative sum)",
+                title="<b>Total vaccinations,</b> shots (cumulative daily sum)",
                 # titlefont=dict(
                 #     color="#1f77b4"
                 # ),
@@ -160,7 +188,7 @@ def app():
                 showgrid=False,
                 rangemode="nonnegative",
                 scaleanchor="y1",
-                scaleratio=50,
+                scaleratio=25,
             ),
         )
 
@@ -215,7 +243,7 @@ def app():
 
         fig.add_annotation(
             # text="Test",
-            text=f"<b>Population:</b> {humanize.intword(_population)} ({year})<br><b>Vaccination started:</b> {_vacc_start_date:%B %d, %Y}<br><b>{_date:%B %d, %Y}:</b> {_vaccinated_people:,} ({int(_vaccinated_people*100/int(_population))}%) people<br>received at least 2 doses of vaccine,<br>{int(_daily_vaccinations):,} shots were administered",
+            text=f"<b>Population:</b> {humanize.intword(_population)} ({year})<br><b>Vaccination started:</b> {_vacc_start_date:%B %d, %Y}<br><b>{_date:%B %d, %Y}:</b> {_vaccinated_people:,} ({int(_vaccinated_people*100/int(_population))}%) people<br>have received at least 2 doses of vaccine,<br>{int(_daily_vaccinations):,} shots were administered",
             align="left",
             x=0.05,
             y=0.95,
@@ -229,11 +257,15 @@ def app():
 
         # ---------------------------------------------------------------------------------------------------------------------------
 
-        def add_goal_marker(perc: int, text: str = None) -> None:
+        def add_goal_marker(perc: int, xanchor: str, xshift: int, text: str = None) -> None:
+            xanchor = xanchor
+            xshift = xshift
             if int(location_info[location][f"days_to_goal_{perc}_perc"]) <= 0:
                 text = f"<b>{perc}%</b>"
                 font_color = "Green"
                 color="Green"
+                xanchor = "right"
+                xshift = 5
             else:
                 text = text or f"<b>{perc}%</b>"
                 font_color = "Orange"
@@ -249,8 +281,8 @@ def app():
                 # hovertext=f"",
                 showarrow=False,
                 yanchor="bottom",
-                xanchor="right",
-                xshift=5,
+                xanchor=xanchor,
+                xshift=xshift,
                 bgcolor="rgba(255,255,255,0.85)"
             )
             fig.add_shape(type="line",
@@ -271,16 +303,20 @@ def app():
             )
             return None
         
-        f = "<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{_days_to_goal} days ({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
+        text_70_perc = "<b>70%</b><br>in <b>{_days_to_goal} days</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
         _goal_date=location_info[location]["goal_date_70_perc"],
         _goal_vaccinations=humanize.intword(int(location_info[location]["goal_vaccinations_70_perc"])))
 
-        add_goal_marker(10)
-        add_goal_marker(50)
-        add_goal_marker(30)
+        text_80_perc = "<b>80%</b><br>in <b>{_days_to_goal} days</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_80_perc"]),
+        _goal_date=location_info[location]["goal_date_80_perc"],
+        _goal_vaccinations=humanize.intword(int(location_info[location]["goal_vaccinations_80_perc"])))
+
+        add_goal_marker(10, "right", 5)
+        add_goal_marker(50, "right", 5)
+        add_goal_marker(30, "right", 5)
         # add_goal_marker(70, f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses")
-        add_goal_marker(70, f)
-        add_goal_marker(80)
+        add_goal_marker(70, "right", 5, text_70_perc)
+        add_goal_marker(80, "left", -5, text_80_perc)
 
         fig.update_layout({
             "plot_bgcolor": "#f5f7f3",
@@ -341,7 +377,7 @@ def app():
 
         return df, location_info
 
-    with st.spinner(text="Tip: you can zoom in on charts to see the data better.") :
+    with st.spinner(text="Tip: you can zoom in on and pan the chart, select its areas, and drag the axes") :
         for location in locations:
             df, location_info = process_vaccination_data(df_vaccination_data_raw, location)
             
@@ -352,19 +388,18 @@ def app():
 
             # if st.button(label="Show Dataset", key=location):
             with st.expander(label="Show/Hide Dataset", expanded=False):
-                st.markdown("""Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00; font-weight:bold;'>duplicate values</span> are also the result of missing data, last valid observations were used to fill the gap (forward fill)""", unsafe_allow_html=True) #<span style='color:#ff0000; font-weight:bold;'>
-                st.dataframe(df.style.highlight_min(subset="daily_vaccinations"))
+                st.markdown("""Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00'>duplicate values</span> in <b>daily_vaccinations</b> are also the result of missing data, last valid observations were used to fill the gap (forward fill)""", unsafe_allow_html=True) #<span style='color:#ff0000; font-weight:bold;'>
+                
+                daily_vaccinations_duplicates = df["daily_vaccinations"].duplicated(keep=False)
+                daily_vaccinations_duplicate_rows = daily_vaccinations_duplicates[daily_vaccinations_duplicates].index.values
+                st.dataframe(df.style.apply(lambda x: ["background: yellow" if x.name in daily_vaccinations_duplicate_rows else "" for i in x], axis=1, subset="daily_vaccinations"))
+
+                # st.json(json.dumps(location_info, default=str))
 
                 output = StringIO()
-                
                 df.to_csv(output)
-                
                 out = output.getvalue()
-                
                 b64 = base64.b64encode(out.encode()).decode()  # strings <-> bytes conversions is necessary here
                 href = f'<a href="data:file/csv;base64,{b64}" download="Vaccination Info - {location}.csv">Download CSV</a>'
-
                 st.markdown(href, unsafe_allow_html=True)
-
                 output.close()
-                
