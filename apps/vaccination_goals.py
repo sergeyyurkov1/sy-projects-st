@@ -21,11 +21,12 @@ def app():
 
     import pycountry
     
-    st.title("Vaccination Goal Visualizer, v4")
+    st.title("Vaccination Goal Visualizer, v4.1")
     st.markdown("""
-        This app approximates a date when our global vaccination goals will be achieved; data are updated every day and automatically reflected in charts.
+        This app approximates a date when our global vaccination goals will be achieved given the current rate of vaccination; data are updated every day and automatically reflected in charts.
         * **Data sources:** [Our World In Data](https://ourworldindata.org/covid-vaccinations), [United Nations](https://population.un.org/wpp)
         * **Disclaimer:** *work in progress; vaccination data in certain regions is reported inconsistently; plot figures are estimated and can not be fully accurate*
+        * Another excellent project using the same data from OWID: [Covidvax.live](https://covidvax.live/)
     """)
     st.markdown("*Due to some scaling issues, if viewing on mobile, please turn your device to landscape mode*")
 
@@ -59,21 +60,24 @@ def app():
         "Asia": 935,
         "Cape Verde": 132,
         "Europe": 908,
+        "High income": 1503,
+        "Low income": 1500,
+        "Upper middle income": 1502,
+        "South Korea": 410,
+        "South America": 931,
     }
 
-    problematic_locations = ["Bonaire Sint Eustatius and Saba", "Burkina Faso", "Cook Islands", "Democratic Republic of Congo", "European Union", "Faeroe Islands"]
-    # , "Falkland Islands"
-    # "Bhutan", 
+    problematic_locations = ["Bonaire Sint Eustatius and Saba", "Burkina Faso", "Cook Islands", "Democratic Republic of Congo", "European Union", "Faeroe Islands", "Guernsey", "Uganda", "Turkmenistan", "Tanzania", "Sudan", "South Sudan", "Sao Tome and Principe", "Pitcairn"]
+    # "Falkland Islands"
+    # "Bhutan"
 
     # Selects country population
     # @st.cache(show_spinner=False)
     def get_population(country: str, year: str) -> dict:
-        df1 = read_population_data()
         population = {}
 
-        if country in problematic_locations:
-            st.error(f"Sorry, currently cannot make a chart for {country}. Please select a different location.")
-            st.stop()
+        df1 = read_population_data()
+        
         try:
             if country in list(location_codes.keys()):
                 code = location_codes[country]
@@ -92,17 +96,6 @@ def app():
         return population
     
     ##############################
-    # Vaccination data
-    ##############################
-    with st.spinner(text="Loading vaccination data...") :
-        df_vaccination_data_raw = get_vaccination_data()
-
-    sorted_unique_locations = sorted(df_vaccination_data_raw.location.unique())
-
-    locations = st.multiselect("Select location(s)", sorted_unique_locations, default="World")
-    #default="World"
-
-    ##############################
     # Functions
     ##############################
     @st.cache(show_spinner=False)
@@ -120,7 +113,7 @@ def app():
 
             perc_approx = closest(percent_fully_vaccinated_list, perc)
 
-            if perc - perc_approx > 3 or perc_approx - perc < -3 :
+            if perc - perc_approx > np.diff(percent_fully_vaccinated_list).max() or perc_approx - perc < -np.diff(percent_fully_vaccinated_list).max() :
                 perc_approx = perc
             
             try: #
@@ -188,7 +181,7 @@ def app():
                 showgrid=False,
                 rangemode="nonnegative",
                 scaleanchor="y1",
-                scaleratio=25,
+                scaleratio=50,
             ),
         )
 
@@ -201,37 +194,6 @@ def app():
             marker_line_width = 0,
             selector=dict(type="line"),
         )
-
-        # ---------------------------------------------------------------------------------------------------------------------------
-
-        # _days_to_goal = location_info[location]["days_to_goal_70_perc"]
-        # _goal_date = location_info[location]["goal_date_70_perc"]
-        # _goal_vaccinations = location_info[location]["goal_vaccinations_70_perc"]
-
-        # if int(location_info[location]["days_to_goal_70_perc"]) <= 0:
-        #     text = f"<b>Vaccination goal</b><br>70% / 2 doses<br>is <b>achieved</b>"
-        #     font_color = "Green"
-        #     # color="Green"
-        # else:
-        #     text = f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses required"
-        #     font_color = "Orange"
-        #     # color="Orange"
-
-        # fig.add_annotation(
-        #     text=text,
-        #     align="center",
-        #     x=location_info[location]["goal_date_70_perc"],
-        #     y=location_info[location]["goal_vaccinations_70_perc"],
-        #     font_color=font_color,
-        #     # arrowcolor="Red",
-        #     # arrowhead=1,
-        #     # hovertext=f"~ {humanize.intword(goal_vaccinations)} doses required",
-        #     showarrow=False,
-        #     yanchor="bottom",
-        #     xanchor="left",
-        #     xshift=10,
-        #     bgcolor="rgba(255,255,255,0.85)"
-        # )
 
         # ---------------------------------------------------------------------------------------------------------------------------
 
@@ -302,19 +264,20 @@ def app():
                 )
             )
             return None
+
+        # humanize.naturalday(dt.datetime.now() - dt.timedelta(days=1))
         
-        text_70_perc = "<b>70%</b><br>in <b>{_days_to_goal} days</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
+        text_70_perc = "<b>70%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
         _goal_date=location_info[location]["goal_date_70_perc"],
         _goal_vaccinations=humanize.intword(int(location_info[location]["goal_vaccinations_70_perc"])))
 
-        text_80_perc = "<b>80%</b><br>in <b>{_days_to_goal} days</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_80_perc"]),
+        text_80_perc = "<b>80%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(_days_to_goal=int(location_info[location]["days_to_goal_80_perc"]),
         _goal_date=location_info[location]["goal_date_80_perc"],
         _goal_vaccinations=humanize.intword(int(location_info[location]["goal_vaccinations_80_perc"])))
 
         add_goal_marker(10, "right", 5)
         add_goal_marker(50, "right", 5)
         add_goal_marker(30, "right", 5)
-        # add_goal_marker(70, f"<b>Vaccination Goal</b><br>70% and 2 doses<br>in <b>{int(_days_to_goal)} days ({_goal_date:%B %Y})</b><br>~ {humanize.intword(int(_goal_vaccinations))} doses")
         add_goal_marker(70, "right", 5, text_70_perc)
         add_goal_marker(80, "left", -5, text_80_perc)
 
@@ -345,6 +308,11 @@ def app():
         df.set_index("location", inplace=True, drop=True)
 
         location_info_series = df.iloc[-1]
+
+        if location in problematic_locations:
+            st.error(f"Sorry, currently cannot make a chart for {location}. Here is the raw data instead.")
+            st.dataframe(df)
+            st.stop()
 
         # ---------------------------------------------------------------------------------------------------------------------------
 
@@ -377,7 +345,18 @@ def app():
 
         return df, location_info
 
-    with st.spinner(text="Tip: you can zoom in on and pan the chart, select its areas, and drag the axes") :
+    ##############################
+    # Entry point
+    ##############################
+    with st.spinner(text="Loading vaccination data...") :
+        df_vaccination_data_raw = get_vaccination_data()
+
+    sorted_unique_locations = sorted(df_vaccination_data_raw.location.unique())
+
+    locations = st.multiselect("Select location(s)", sorted_unique_locations, default="World")
+    #default="World"
+
+    with st.spinner(text="Tip: you can zoom in on and pan the chart, select areas, drag the axes and more...") :
         for location in locations:
             df, location_info = process_vaccination_data(df_vaccination_data_raw, location)
             
