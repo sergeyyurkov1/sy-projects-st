@@ -51,6 +51,7 @@ def main():
         except ValueError:
             index = 0
         selected_app = st.sidebar.selectbox("Select a project", app_titles, index)
+        
         # Runs selected app
         apps[selected_app]()
 
