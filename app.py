@@ -63,13 +63,16 @@ def main():
 # + additional scripts
 st.markdown(
     """
-    <style>
+    <style> 
+        .css-ypaiy1 {
+        visibility: hidden;
+        }
         #MainMenu {
         visibility: hidden;
         }
-        /*footer {
+        footer {
         visibility: hidden;
-        }*/
+        }
         button[title="View fullscreen"] {
         visibility: hidden;
         }
