@@ -65,9 +65,11 @@ def app():
         "Upper middle income": 1502,
         "South Korea": 410,
         "South America": 931,
+        "Oceania": 909,
+        "North America": 905,
     }
 
-    problematic_locations = ["Bonaire Sint Eustatius and Saba", "Burkina Faso", "Cook Islands", "Democratic Republic of Congo", "European Union", "Faeroe Islands", "Guernsey", "Uganda", "Turkmenistan", "Tanzania", "Sudan", "South Sudan", "Sao Tome and Principe", "Pitcairn"]
+    problematic_locations = ["Bonaire Sint Eustatius and Saba", "Burkina Faso", "Cook Islands", "Democratic Republic of Congo", "European Union", "Faeroe Islands", "Guernsey", "Uganda", "Turkmenistan", "Tanzania", "Sudan", "South Sudan", "Sao Tome and Principe", "Pitcairn", "Northern Cyprus", "Nigeria", "Niger"]
     # "Falkland Islands"
     # "Bhutan"
 
@@ -349,7 +351,11 @@ def app():
     # Entry point
     ##############################
     with st.spinner(text="Loading vaccination data...") :
-        df_vaccination_data_raw = get_vaccination_data()
+        try:
+            df_vaccination_data_raw = get_vaccination_data()
+        except:
+            st.error(f"Something went wrong. Please try again later.")
+            st.stop()
 
     sorted_unique_locations = sorted(df_vaccination_data_raw.location.unique())
 
@@ -361,7 +367,7 @@ def app():
             df, location_info = process_vaccination_data(df_vaccination_data_raw, location)
             
             fig = make_plot(df, location_info, location, year)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=False)
 
             df.reset_index(drop=True, inplace=True)
 

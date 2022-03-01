@@ -1,24 +1,32 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from .my_functions import load_static
+from functions import functions
 
-import os
-import pathlib
+# import os
+from pathlib import Path
 
 # print(os.path.basename(__file__))
-app_name = pathlib.Path(__file__).stem
+app_name = Path(__file__).stem
 
 def app():
-    st.title('Blobby')
     st.markdown("""
+    # Home
     ***
-    Made with `P5.js` JavaScript library
+    Meet Blobby. It is made with `P5.js` JavaScript library!
     """)
 
-    html = load_static(os.path.join(app_name, "home.html")) + load_static(os.path.join(app_name, "style.css")) + load_static(os.path.join(app_name, "sketch.js"))
+    # import requests
+    # try:
+    #     requests.get("http://www.google.com")
+    # except:
+    #     st.error("Something went wrong. Please try again later.")
+    #     st.stop()
 
-    components.html(html, height = 300)
+    with st.spinner(text="Loading..."):
+        html = functions.load_static("home.html") + functions.load_static("style.css") + functions. load_static("sketch.js")
 
-    st.markdown("***")
-    st.markdown("### [Source code](#)")
-    st.code(load_static(os.path.join(app_name, "sketch.js"), False), language="javascript")
+        components.html(html, height = 300)
+
+        st.markdown("***")
+        st.markdown("### [Source code](#)")
+        st.code(functions.load_static("sketch.js", False), language="javascript")

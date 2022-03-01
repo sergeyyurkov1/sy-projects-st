@@ -1,13 +1,16 @@
-import os
+from constants import ROOT
 
-def load_static(file, tags=True) :
-    '''Loader for text files to be embedded with Streamlit
-    Takes path to a `file` as main argument
-    If `tags` is set to True, surrounds the text with script tags, else returns just text
+
+def load_static(file: str, tags: bool = True) -> str:
+    '''Loader for text files to be embedded with Streamlit. Takes path to a `file` as main argument. If `tags` is set to `True`, surrounds the text with script tags (e.g. <style>), else returns just the text.
     '''
+    from pathlib import Path
+
+    import constants
+
     ext = file.split('.')[-1]
     
-    with open( os.path.join( os.path.dirname(__file__), file ) ) as f :
+    with open(list(Path(constants.ROOT).rglob(file))[0]) as f :
         static_file = f.read()
     
     if tags == True :

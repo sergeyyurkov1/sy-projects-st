@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 # import os
 from streamlit import caching
 
-caching.clear_cache()
+# caching.clear_cache()
 
 # from .my_functions import load_static
 
@@ -12,8 +12,8 @@ caching.clear_cache()
 # app_name = pathlib.Path(__file__).stem
 
 def app():
-    st.title('Bubble Pop!')
     st.markdown("""
+    # Bubble Pop!
     ***
     Simple and relaxing game made with `P5.js` and `Matter.js` libraries. Pop some bubbles but watch out for pesky donuts! And remember: "It's not a bug, it's a feature!"
     
