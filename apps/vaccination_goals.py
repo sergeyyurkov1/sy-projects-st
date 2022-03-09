@@ -45,7 +45,7 @@ def app():
         )
         return df
 
-    @st.cache(show_spinner=False)
+    @st.cache(show_spinner=False, suppress_st_warning=True)
     def read_population_data():
         try:
             df = pd.read_excel(demographic_data)
