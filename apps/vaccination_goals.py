@@ -8,6 +8,8 @@ from io import StringIO
 
 import json
 
+VERSION = 4.2
+
 # Defines the application
 def app():
     import humanize
@@ -21,7 +23,7 @@ def app():
 
     import pycountry
 
-    st.title("Vaccination Goal Visualizer, v4.1")
+    st.title(f"Vaccination Goal Visualizer, v{VERSION}")
     st.markdown(
         """
         This app approximates a date when our global vaccination goals will be achieved given the current rate of vaccination; data are updated every day and automatically reflected in charts.
@@ -47,11 +49,18 @@ def app():
 
     @st.cache(show_spinner=False, suppress_st_warning=True)
     def read_population_data():
+        import pickle
         try:
-            df = pd.read_excel(demographic_data)
-        except ValueError:
-            st.warning("This app is currently unavailable due to a maintenance")
-            st.stop()
+            with open("apps/data/population_data.pickle", "rb") as f:
+                df = pickle.load(f)
+        except FileNotFoundError:
+            try:
+                df = pd.read_excel(demographic_data)
+                with open("apps/data/population_data.pickle", "wb") as f:
+                    pickle.dump(df, f)
+            except ValueError:
+                st.warning("This app is currently unavailable due to a maintenance")
+                st.stop()
 
         # Removes first 14 rows containing unrelated information
         df = df.iloc[15:]
@@ -78,6 +87,8 @@ def app():
         "North America": 905,
     }
 
+    # TODO: needs a better algorithm
+    # Commented out values have been fixed
     problematic_locations = [
         "Bonaire Sint Eustatius and Saba",
         "Burkina Faso",
@@ -178,6 +189,7 @@ def app():
         set_predict_or_fact(50)
         set_predict_or_fact(70)
         set_predict_or_fact(80)
+        set_predict_or_fact(100)
 
         # ---------------------------------------------------------------------------------------------------------
 
@@ -261,7 +273,6 @@ def app():
         _daily_vaccinations = location_info[location]["daily_vaccinations"]
 
         fig.add_annotation(
-            # text="Test",
             text=f"<b>Population:</b> {humanize.intword(_population)} ({year})<br><b>Vaccination started:</b> {_vacc_start_date:%B %d, %Y}<br><b>{_date:%B %d, %Y}:</b> {_vaccinated_people:,} ({int(_vaccinated_people*100/int(_population))}%) people<br>have received at least 2 doses of vaccine,<br>{int(_daily_vaccinations):,} shots were administered",
             align="left",
             x=0.05,
@@ -331,35 +342,27 @@ def app():
 
         # humanize.naturalday(dt.datetime.now() - dt.timedelta(days=1))
 
-        text_70_perc = "<b>70%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
-            _days_to_goal=int(location_info[location]["days_to_goal_70_perc"]),
-            _goal_date=location_info[location]["goal_date_70_perc"],
-            _goal_vaccinations=humanize.intword(
-                int(location_info[location]["goal_vaccinations_70_perc"])
-            ),
-        )
-
-        text_80_perc = "<b>80%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
-            _days_to_goal=int(location_info[location]["days_to_goal_80_perc"]),
-            _goal_date=location_info[location]["goal_date_80_perc"],
-            _goal_vaccinations=humanize.intword(
-                int(location_info[location]["goal_vaccinations_80_perc"])
+        def get_annotation_for_goal_marker(perc: int) -> str:
+            return "<b>{_perc}%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
+                _perc = perc,
+                _days_to_goal=int(location_info[location][f"days_to_goal_{perc}_perc"]),
+                _goal_date=location_info[location][f"goal_date_{perc}_perc"],
+                _goal_vaccinations=humanize.intword(
+                    int(location_info[location][f"goal_vaccinations_{perc}_perc"])
             ),
         )
 
         add_goal_marker(10, "right", 5)
-        add_goal_marker(50, "right", 5)
         add_goal_marker(30, "right", 5)
-        add_goal_marker(70, "right", 5, text_70_perc)
-        add_goal_marker(80, "left", -5, text_80_perc)
+        add_goal_marker(50, "right", 5)
+        add_goal_marker(70, "right", 5)  # , get_annotation_for_goal_marker(70)
+        add_goal_marker(80, "left", -5, get_annotation_for_goal_marker(80))
+        add_goal_marker(100, "left", -5, get_annotation_for_goal_marker(100))
 
         fig.update_layout(
             {"plot_bgcolor": "#f5f7f3", "paper_bgcolor": "#f5f7f3"},
             hovermode="x",
             hoverlabel=dict(font_color="white"),
-        )
-
-        fig.update_layout(
             title_text=f"{location}",
             width=800,
             showlegend=False,
@@ -425,6 +428,7 @@ def app():
             return None
 
         set_predict_goal_date(10)
+        set_predict_goal_date(100)
         set_predict_goal_date(80)
         set_predict_goal_date(70)
         set_predict_goal_date(50)
@@ -468,7 +472,7 @@ def app():
             # if st.button(label="Show Dataset", key=location):
             with st.expander(label="Show/Hide Dataset", expanded=False):
                 st.markdown(
-                    """Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00'>duplicate values</span> in <b>daily_vaccinations</b> are also the result of missing data, last valid observations were used to fill the gap (forward fill)""",
+                    """Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00'>duplicate values</span> in <b>daily_vaccinations</b> are the result of missing data, last valid observations were used to fill the gap (forward fill)""",
                     unsafe_allow_html=True,
                 )  # <span style='color:#ff0000; font-weight:bold;'>
 
