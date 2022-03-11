@@ -131,7 +131,7 @@ def app():
     ##############################
     # Functions
     ##############################
-    @st.cache(show_spinner=False)
+    @st.cache(show_spinner=False, allow_output_mutation=True)
     def make_plot(df1, location_info1, location, year):
         df = copy.deepcopy(df1)
         location_info = copy.deepcopy(location_info1)
