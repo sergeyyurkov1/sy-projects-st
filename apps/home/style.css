@@ -3,9 +3,9 @@ html, body {
     padding: 0;
 }
 canvas {
-display: block;
-margin: auto;
+    display: block;
+    margin: auto;
 }
 div {
-height: 300px;
+    height: 300px;
 }
