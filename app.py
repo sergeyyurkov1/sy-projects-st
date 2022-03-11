@@ -20,7 +20,7 @@ apps = {
     "Home": home.app, # Home
     "Anki to Obsidian exporter": anki_to_obsidian.app,
     "Bubble Pop!": bubble_pop.app,
-    "freeCodeCamp Projects": free_code_camp.app,
+    # "freeCodeCamp Projects": free_code_camp.app,
     "Vaccination Goal Visualizer": vaccination_goals.app,
 }
 app_titles = list(apps.keys())

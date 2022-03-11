@@ -343,7 +343,7 @@ def app():
         # humanize.naturalday(dt.datetime.now() - dt.timedelta(days=1))
 
         def get_annotation_for_goal_marker(perc: int) -> str:
-            return "<b>{_perc}%</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
+            return "<b>-- {_perc}% --</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
                 _perc = perc,
                 _days_to_goal=int(location_info[location][f"days_to_goal_{perc}_perc"]),
                 _goal_date=location_info[location][f"goal_date_{perc}_perc"],
@@ -387,7 +387,7 @@ def app():
 
         if location in problematic_locations:
             st.error(
-                f"Sorry, currently cannot make a chart for {location}. Here is the raw data instead."
+                f"Sorry, cannot make a chart for {location}. Here is the raw data instead."
             )
             st.dataframe(df)
             st.stop()
