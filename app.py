@@ -6,8 +6,7 @@ import streamlit as st
 from PIL import Image
 
 # Sets Streamlit configuration
-st.set_page_config(page_title="Apps", layout="wide")
-# page_icon="icon.png"
+st.set_page_config(page_title="Apps", layout="wide", page_icon="01.png")
 
 # Imports apps
 from apps import (
@@ -32,7 +31,7 @@ def main():
     """
     # Sidebar
     # -------
-    image = Image.open('logo.png')
+    image = Image.open("01.png")
     st.sidebar.image(image, width=150)
     
     st.sidebar.markdown(
