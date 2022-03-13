@@ -9,21 +9,17 @@ from PIL import Image
 st.set_page_config(page_title="Apps", layout="wide", page_icon="01.png")
 
 # Imports apps
-from apps import (
-    home,
-    anki_to_obsidian,
-    bubble_pop,
-    free_code_camp,
-    vaccination_goals
-)
+from apps import home, anki_to_obsidian, bubble_pop, free_code_camp, vaccination_goals
+
 apps = {
-    "Home": home.app, # Home
+    "Home": home.app,  # Home
     "Anki to Obsidian exporter": anki_to_obsidian.app,
     "Bubble Pop!": bubble_pop.app,
     # "freeCodeCamp Projects": free_code_camp.app,
     "Vaccination Goal Visualizer": vaccination_goals.app,
 }
 app_titles = list(apps.keys())
+
 
 def main():
     """
@@ -33,7 +29,7 @@ def main():
     # -------
     image = Image.open("01.png")
     st.sidebar.image(image, width=150)
-    
+
     st.sidebar.markdown(
         """
         This site is built and maintained by **Sergey Yurkov**. You can learn more about me at [linkedin.com](https://www.linkedin.com/in/sergeyyurkov1).
@@ -50,7 +46,7 @@ def main():
         except ValueError:
             index = 0
         selected_app = st.sidebar.selectbox("Select a project", app_titles, index)
-        
+
         # Runs selected app
         apps[selected_app]()
 
@@ -58,11 +54,12 @@ def main():
     else:
         st.warning("404")
 
+
 # Hides developer menu and footer with CSS
 # + additional scripts
 st.markdown(
     """
-    <style> 
+    <style>
         .css-ypaiy1 {
         visibility: hidden;
         }
@@ -75,11 +72,14 @@ st.markdown(
         button[title="View fullscreen"] {
         visibility: hidden;
         }
+        a { color: #7341e1; }
     </style>
     <script>
         // screen.orientation.lock("portrait-primary"); // Primarily for Bubble Pop! to prevent buggy behavior from changing device orientation
     </script>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
 if __name__ == "__main__":
     main()

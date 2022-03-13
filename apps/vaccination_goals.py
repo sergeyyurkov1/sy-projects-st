@@ -50,6 +50,7 @@ def app():
     @st.cache(show_spinner=False, suppress_st_warning=True)
     def read_population_data():
         import pickle
+
         try:
             with open("apps/data/population_data.pickle", "rb") as f:
                 df = pickle.load(f)
@@ -196,13 +197,16 @@ def app():
         fig = go.Figure()
 
         fig.add_trace(
-            go.Bar(
+            go.Line(
                 x=df["date"],
                 y=df["daily_vaccinations_cumsum"],
                 name="total",
                 hoverinfo="y",
                 hovertemplate="%{y:,}",
                 yaxis="y1",
+                fill="tozeroy",
+                marker_color="rgba(115, 65, 225, 0.5)",
+                marker_line_width=0,
             )
         )
 
@@ -211,9 +215,25 @@ def app():
                 x=df["date"],
                 y=df["daily_vaccinations"],
                 name="daily",
+                hoverinfo="skip",
+                hovertemplate=None,
+                yaxis="y2",
+                marker_color="#ffffff",
+                marker_line_width=0,
+                line=dict(color="#ffffff", width=6),
+            )
+        )
+        fig.add_trace(
+            go.Line(
+                x=df["date"],
+                y=df["daily_vaccinations"],
+                name="daily",
                 hoverinfo="y",
                 hovertemplate="%{y:,}",
                 yaxis="y2",
+                marker_color="Red",
+                marker_line_width=0,
+                line=dict(color="Red", width=2),
             )
         )
 
@@ -221,6 +241,7 @@ def app():
             xaxis=dict(
                 title="<b>Days</b>",
                 showgrid=False,
+                # layer="above traces",
             ),
             yaxis=dict(
                 title="<b>Total vaccinations,</b> shots (cumulative daily sum)",
@@ -252,18 +273,6 @@ def app():
             ),
         )
 
-        fig.update_traces(
-            marker_color="rgba(148, 129, 210, 0.7)",
-            marker_line_width=0,
-            selector=dict(type="bar"),
-        )
-
-        fig.update_traces(
-            marker_color="Red",
-            marker_line_width=0,
-            selector=dict(type="line"),
-        )
-
         # ---------------------------------------------------------------------------------------------------------------------------
 
         _population = int(location_info[location]["population"])
@@ -283,7 +292,7 @@ def app():
             showarrow=False,
             # xanchor="right",
             # xshift=-10,
-            # bgcolor="rgba(169,169,169,0.35)"
+            bgcolor="rgba(245, 247, 243, 0.85)",
         )
 
         # ---------------------------------------------------------------------------------------------------------------------------
@@ -344,13 +353,13 @@ def app():
 
         def get_annotation_for_goal_marker(perc: int) -> str:
             return "<b>-- {_perc}% --</b><br>in <b>{_days_to_goal} day(s)</b><br><b>({_goal_date:%B %Y})</b><br>~ {_goal_vaccinations} doses".format(
-                _perc = perc,
+                _perc=perc,
                 _days_to_goal=int(location_info[location][f"days_to_goal_{perc}_perc"]),
                 _goal_date=location_info[location][f"goal_date_{perc}_perc"],
                 _goal_vaccinations=humanize.intword(
                     int(location_info[location][f"goal_vaccinations_{perc}_perc"])
-            ),
-        )
+                ),
+            )
 
         add_goal_marker(10, "right", 5)
         add_goal_marker(30, "right", 5)
@@ -435,7 +444,6 @@ def app():
         set_predict_goal_date(30)
 
         df["percent_fully_vaccinated"].fillna(0, inplace=True)
-        # df = df.astype({"percent_fully_vaccinated": int})
 
         return df, location_info
 
@@ -464,12 +472,22 @@ def app():
                 df_vaccination_data_raw, location
             )
 
+            config = {
+                "displaylogo": False,
+                "modeBarButtonsToRemove": [
+                    "resetScale",
+                    "toggleHover",
+                    "toggleSpikelines",
+                    "autoScale2d",
+                    "hoverClosestCartesian",
+                    "hoverCompareCartesian",
+                ],
+            }
             fig = make_plot(df, location_info, location, year)
-            st.plotly_chart(fig, use_container_width=False)
+            st.plotly_chart(fig, use_container_width=False, config=config)
 
             df.reset_index(drop=True, inplace=True)
 
-            # if st.button(label="Show Dataset", key=location):
             with st.expander(label="Show/Hide Dataset", expanded=False):
                 st.markdown(
                     """Missing data is indicated with <span style='font-weight:bold;'>nan</span>, <span style='background-color:#ffff00'>duplicate values</span> in <b>daily_vaccinations</b> are the result of missing data, last valid observations were used to fill the gap (forward fill)""",
@@ -494,8 +512,6 @@ def app():
                         subset="daily_vaccinations",
                     )
                 )
-
-                # st.json(json.dumps(location_info, default=str))
 
                 output = StringIO()
                 df.to_csv(output)
