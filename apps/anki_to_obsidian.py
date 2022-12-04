@@ -12,7 +12,7 @@ import time
 def app():
     st.title("Anki to Obsidian exporter")
     st.subheader("Export your flashcards to Obsidian note taking app.")
-    # st.markdown("***")
+    st.markdown("***")
 
     col1, col2 = st.columns((1, 1))
 
@@ -40,7 +40,7 @@ def app():
             help=None,
         )
 
-    st.markdown("***")
+    # st.markdown("***")
 
     col3, col4 = st.columns((1, 1))
 
